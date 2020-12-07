@@ -184,7 +184,10 @@ class WebhookEventTrigger(models.Model):
         self.exception = ""
         self.traceback = ""
 
-        self.event = Event.process(self.json_body)
+        json_body = self.json_body
+        connected_account_id = json_body.get('account')
+        json_body['data']['connected_account_id'] = connected_account_id
+        self.event = Event.process(json_body)
         self.processed = True
         if save:
             self.save()

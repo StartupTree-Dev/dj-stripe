@@ -355,7 +355,8 @@ def _handle_crud_like_event(
         kwargs = {"id": id}
         if hasattr(target_cls, "customer"):
             kwargs["customer"] = customer
-        data = target_cls(**kwargs).api_retrieve()
+        account_id = data.get('connected_account_id')
+        data = target_cls(**kwargs).api_retrieve(stripe_account=account_id)
         obj = target_cls.sync_from_stripe_data(data)
 
     return obj, crud_type
