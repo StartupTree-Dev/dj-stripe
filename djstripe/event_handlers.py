@@ -357,6 +357,6 @@ def _handle_crud_like_event(
             kwargs["customer"] = customer
         account_id = data.get('connected_account_id')
         data = target_cls(**kwargs).api_retrieve(stripe_account=account_id)
-        obj = target_cls.sync_from_stripe_data(data)
+        obj = target_cls.sync_from_stripe_data(data, stripe_account=account_id)
 
     return obj, crud_type

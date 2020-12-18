@@ -799,13 +799,11 @@ class UpcomingInvoice(BaseInvoice):
         total_tax_amounts = []
 
         for tax_amount_data in data.get("total_tax_amounts", []):
-            tax_rate_data = tax_amount_data["tax_rate"]
-            if isinstance(tax_rate_data, str):
-                tax_rate_data = {"tax_rate": tax_rate_data}
+            tax_rate_id = tax_amount_data["tax_rate"]
+            if not isinstance(tax_rate_id, str):
+                tax_rate_id = tax_rate_id["tax_rate"]
 
-            tax_rate, _ = TaxRate._get_or_create_from_stripe_object(
-                tax_rate_data, field_name="tax_rate", refetch=True
-            )
+            tax_rate = TaxRate._get_or_retrieve(id=tax_rate_id)
 
             tax_amount = DjstripeUpcomingInvoiceTotalTaxAmount(
                 invoice=self,
@@ -986,7 +984,7 @@ class InvoiceItem(StripeModel):
             )
 
     @classmethod
-    def sync_from_stripe_data(cls, data):
+    def sync_from_stripe_data(cls, data, stripe_account=None):
         invoice_data = data.get("invoice")
 
         if invoice_data:
@@ -996,10 +994,10 @@ class InvoiceItem(StripeModel):
             if not Invoice.objects.filter(id=invoice_id).exists():
                 if invoice_id == invoice_data:
                     # we only have the id, fetch the full data
-                    invoice_data = Invoice(id=invoice_id).api_retrieve()
-                Invoice.sync_from_stripe_data(data=invoice_data)
+                    invoice_data = Invoice(id=invoice_id).api_retrieve(stripe_account=stripe_account)
+                Invoice.sync_from_stripe_data(data=invoice_data, stripe_account=stripe_account)
 
-        return super().sync_from_stripe_data(data)
+        return super().sync_from_stripe_data(data, stripe_account=stripe_account)
 
     def __str__(self):
         return self.description

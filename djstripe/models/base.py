@@ -251,11 +251,14 @@ class StripeModel(models.Model):
         return data
 
     @classmethod
-    def _find_owner_account(cls, data):
+    def _find_owner_account(cls, data, stripe_account=None):
+        stripe_account = getattr(data, "stripe_account", stripe_account)
+        if stripe_account:
+            from .account import Account
+            return Account._get_or_retrieve(id=stripe_account)
+
         api_key = getattr(data, "api_key", "")
         if api_key:
-            from .account import Account
-
             return Account.get_or_retrieve_for_api_key(api_key)
 
     @classmethod
@@ -329,7 +332,7 @@ class StripeModel(models.Model):
 
         # For all objects other than the account object itself, get the API key
         # attached to the request, and get the matching Account for that key.
-        owner_account = cls._find_owner_account(data)
+        owner_account = cls._find_owner_account(data, stripe_account=stripe_account)
         if owner_account:
             result["djstripe_owner_account"] = owner_account
 
@@ -834,7 +837,7 @@ class StripeModel(models.Model):
         return refund_objs
 
     @classmethod
-    def sync_from_stripe_data(cls, data):
+    def sync_from_stripe_data(cls, data, stripe_account=None):
         """
         Syncs this object from the stripe data provided.
 
@@ -846,6 +849,7 @@ class StripeModel(models.Model):
         """
         current_ids = set()
         data_id = data.get("id")
+        stripe_account = getattr(data, "stripe_account", stripe_account)
 
         if data_id:
             # stop nested objects from trying to retrieve this object before
@@ -853,17 +857,32 @@ class StripeModel(models.Model):
             current_ids.add(data_id)
 
         instance, created = cls._get_or_create_from_stripe_object(
-            data, current_ids=current_ids
+            data, current_ids=current_ids, stripe_account=stripe_account
         )
 
         if not created:
-            record_data = cls._stripe_object_to_record(data)
+            record_data = cls._stripe_object_to_record(data, stripe_account=stripe_account)
             for attr, value in record_data.items():
                 setattr(instance, attr, value)
             instance._attach_objects_hook(cls, data, current_ids=current_ids)
             instance.save()
             instance._attach_objects_post_save_hook(cls, data)
 
+        return instance
+
+    @classmethod
+    def _get_or_retrieve(cls, **kwargs):
+        try:
+            return cls.objects.get(**kwargs)
+        except cls.DoesNotExist:
+            pass
+
+        djstripe_owner_account = kwargs.pop("djstripe_owner_account", None)
+        if djstripe_owner_account:
+            kwargs["stripe_account"] = djstripe_owner_account.id
+
+        data = cls.stripe_class.retrieve(**kwargs)
+        instance = cls.sync_from_stripe_data(data)
         return instance
 
     def __str__(self):
