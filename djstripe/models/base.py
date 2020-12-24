@@ -300,7 +300,9 @@ class StripeModel(models.Model):
 
         # Iterate over all the fields that we know are related to Stripe,
         # let each field work its own magic
-        ignore_fields = ["date_purged", "subscriber"]  # XXX: Customer hack
+        # ignore_fields = ["date_purged", "subscriber"]  # XXX: Customer hack
+        # FIXME ? added application_fee field due to circular relation between Charge and ApplicationFee
+        ignore_fields = ["date_purged", "subscriber", "application_fee"]  # XXX: Customer hack
         for field in cls._meta.fields:
             if field.name.startswith("djstripe_") or field.name in ignore_fields:
                 continue
