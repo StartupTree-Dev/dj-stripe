@@ -268,8 +268,8 @@ class StripeModel(models.Model):
     @classmethod
     def _find_owner_account(cls, data, stripe_account=None):
         stripe_account = getattr(data, "stripe_account", stripe_account)
+        from .account import Account
         if stripe_account:
-            from .account import Account
             return Account._get_or_retrieve(id=stripe_account)
 
         api_key = getattr(data, "api_key", "")
