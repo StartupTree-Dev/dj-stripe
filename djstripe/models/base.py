@@ -161,27 +161,12 @@ class StripeModel(models.Model):
         if not stripe_account:
             stripe_account = self._get_stripe_account_id(api_key)
 
-        try:
-            return self.stripe_class.retrieve(
-                id=self.id,
-                api_key=api_key or self.default_api_key,
-                expand=self.expand_fields,
-                stripe_account=stripe_account,
-            )
-        except stripe.error.InvalidRequestError as e:
-            """
-            FIXME? may just override Connect related models that shouldn't have
-            stripe_account for retrieve? This is mainly for recursive retrieval of
-            webhook event object.
-            """
-            if stripe_account is not None:
-                return self.stripe_class.retrieve(
-                    id=self.id,
-                    api_key=api_key or self.default_api_key,
-                    expand=self.expand_fields,
-                )
-            else:
-                raise e
+        return self.stripe_class.retrieve(
+            id=self.id,
+            api_key=api_key or self.default_api_key,
+            expand=self.expand_fields,
+            stripe_account=stripe_account,
+        )
 
     @classmethod
     def api_list(cls, api_key=djstripe_settings.STRIPE_SECRET_KEY, **kwargs):
@@ -615,7 +600,16 @@ class StripeModel(models.Model):
                     if "a similar object exists in" in str(e):
                         pass
                     else:
-                        raise
+                        """
+                        FIXME? may just override Connect related models that shouldn't have
+                        stripe_account for retrieve? This is mainly for recursive retrieval of
+                        webhook event object.
+                        """
+                        stripe_account = None
+                        try:
+                            data = cls_instance.api_retrieve()
+                        except InvalidRequestError as e:
+                            raise
                 should_expand = False
 
         # The next thing to happen will be the "create from stripe object" call.
