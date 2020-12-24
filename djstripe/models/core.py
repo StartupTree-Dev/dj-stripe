@@ -81,6 +81,29 @@ class BalanceTransaction(StripeModel):
     def get_stripe_dashboard_url(self):
         return self.get_source_instance().get_stripe_dashboard_url()
 
+    def api_retrieve(self, api_key=None, stripe_account=None):
+        """
+        FIXME? may just override Connect related models that shouldn't have
+        stripe_account for retrieve? This is mainly for recursive retrieval of
+        webhook event object.
+        """
+        try:
+            return self.stripe_class.retrieve(
+                id=self.id,
+                api_key=api_key or self.default_api_key,
+                expand=self.expand_fields
+            )
+        except InvalidRequestError as e:
+            if stripe_account is not None:
+                return self.stripe_class.retrieve(
+                    id=self.id,
+                    api_key=api_key or self.default_api_key,
+                    expand=self.expand_fields,
+                    stripe_account=stripe_account
+                )
+            else:
+                raise
+
 
 class Charge(StripeModel):
     """

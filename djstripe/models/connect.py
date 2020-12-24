@@ -13,6 +13,7 @@ from ..fields import (
 )
 from ..managers import TransferManager
 from .base import StripeModel
+from stripe.error import InvalidRequestError
 
 
 class ApplicationFee(StripeModel):
@@ -57,11 +58,22 @@ class ApplicationFee(StripeModel):
         stripe_account for retrieve? This is mainly for recursive retrieval of
         webhook event object.
         """
-        return self.stripe_class.retrieve(
-            id=self.id,
-            api_key=api_key or self.default_api_key,
-            expand=self.expand_fields
-        )
+        try:
+            return self.stripe_class.retrieve(
+                id=self.id,
+                api_key=api_key or self.default_api_key,
+                expand=self.expand_fields
+            )
+        except InvalidRequestError as e:
+            if stripe_account is not None:
+                return self.stripe_class.retrieve(
+                    id=self.id,
+                    api_key=api_key or self.default_api_key,
+                    expand=self.expand_fields,
+                    stripe_account=stripe_account
+                )
+            else:
+                raise
 
 
 class ApplicationFeeRefund(StripeModel):
@@ -97,11 +109,22 @@ class ApplicationFeeRefund(StripeModel):
         stripe_account for retrieve? This is mainly for recursive retrieval of
         webhook event object.
         """
-        return self.stripe_class.retrieve(
-            id=self.id,
-            api_key=api_key or self.default_api_key,
-            expand=self.expand_fields
-        )
+        try:
+            return self.stripe_class.retrieve(
+                id=self.id,
+                api_key=api_key or self.default_api_key,
+                expand=self.expand_fields
+            )
+        except InvalidRequestError as e:
+            if stripe_account is not None:
+                return self.stripe_class.retrieve(
+                    id=self.id,
+                    api_key=api_key or self.default_api_key,
+                    expand=self.expand_fields,
+                    stripe_account=stripe_account
+                )
+            else:
+                raise
 
 
 class CountrySpec(StripeModel):

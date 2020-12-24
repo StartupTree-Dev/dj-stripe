@@ -165,7 +165,7 @@ class StripeModel(models.Model):
             id=self.id,
             api_key=api_key or self.default_api_key,
             expand=self.expand_fields,
-            stripe_account=stripe_account,
+            stripe_account=stripe_account
         )
 
     @classmethod
