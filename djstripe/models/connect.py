@@ -51,6 +51,18 @@ class ApplicationFee(StripeModel):
         )
     )
 
+    def api_retrieve(self, api_key=None, stripe_account=None):
+        """
+        FIXME? may just override Connect related models that shouldn't have
+        stripe_account for retrieve? This is mainly for recursive retrieval of
+        webhook event object.
+        """
+        return self.stripe_class.retrieve(
+            id=self.id,
+            api_key=api_key or self.default_api_key,
+            expand=self.expand_fields
+        )
+
 
 class ApplicationFeeRefund(StripeModel):
     """
@@ -78,6 +90,18 @@ class ApplicationFeeRefund(StripeModel):
         related_name="refunds",
         help_text="The application fee that was refunded",
     )
+
+    def api_retrieve(self, api_key=None, stripe_account=None):
+        """
+        FIXME? may just override Connect related models that shouldn't have
+        stripe_account for retrieve? This is mainly for recursive retrieval of
+        webhook event object.
+        """
+        return self.stripe_class.retrieve(
+            id=self.id,
+            api_key=api_key or self.default_api_key,
+            expand=self.expand_fields
+        )
 
 
 class CountrySpec(StripeModel):

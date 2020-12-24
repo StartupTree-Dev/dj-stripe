@@ -600,16 +600,7 @@ class StripeModel(models.Model):
                     if "a similar object exists in" in str(e):
                         pass
                     else:
-                        """
-                        FIXME? may just override Connect related models that shouldn't have
-                        stripe_account for retrieve? This is mainly for recursive retrieval of
-                        webhook event object.
-                        """
-                        stripe_account = None
-                        try:
-                            data = cls_instance.api_retrieve()
-                        except InvalidRequestError as e:
-                            raise
+                        raise
                 should_expand = False
 
         # The next thing to happen will be the "create from stripe object" call.
