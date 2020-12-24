@@ -175,7 +175,7 @@ class Account(StripeModel):
         )
 
     @classmethod
-    def _find_owner_account(cls, data):
+    def _find_owner_account(cls, data, stripe_account=None):
         # Account model never has an owner account (it's always itself)
         return None
 
