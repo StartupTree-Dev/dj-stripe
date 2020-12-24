@@ -161,12 +161,27 @@ class StripeModel(models.Model):
         if not stripe_account:
             stripe_account = self._get_stripe_account_id(api_key)
 
-        return self.stripe_class.retrieve(
-            id=self.id,
-            api_key=api_key or self.default_api_key,
-            expand=self.expand_fields,
-            stripe_account=stripe_account,
-        )
+        try:
+            return self.stripe_class.retrieve(
+                id=self.id,
+                api_key=api_key or self.default_api_key,
+                expand=self.expand_fields,
+                stripe_account=stripe_account,
+            )
+        except stripe.error.InvalidRequestError as e:
+            """
+            FIXME? may just override Connect related models that shouldn't have
+            stripe_account for retrieve? This is mainly for recursive retrieval of
+            webhook event object.
+            """
+            if stripe_account is not None:
+                return self.stripe_class.retrieve(
+                    id=self.id,
+                    api_key=api_key or self.default_api_key,
+                    expand=self.expand_fields,
+                )
+            else:
+                raise e
 
     @classmethod
     def api_list(cls, api_key=djstripe_settings.STRIPE_SECRET_KEY, **kwargs):
