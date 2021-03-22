@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 from stripe.error import InvalidRequestError
+from ..exceptions import StripeObjectManipulationException
 
 from .. import enums
 from .. import settings as djstripe_settings
@@ -1419,7 +1420,6 @@ class Subscription(StripeModel):
     status = StripeEnumField(
         enum=enums.SubscriptionStatus, help_text="The status of this subscription."
     )
-
     # deprecated - will be removed in 2.4 - use .default_tax_rates instead
     tax_percent = StripePercentField(
         null=True,
@@ -1450,7 +1450,7 @@ class Subscription(StripeModel):
     def update(
         self,
         plan: Union[StripeModel, str] = None,
-        prorate=djstripe_settings.PRORATION_POLICY,
+        prorate: bool = None,
         **kwargs,
     ):
         """
@@ -1471,7 +1471,23 @@ class Subscription(StripeModel):
         if plan is not None and isinstance(plan, StripeModel):
             plan = plan.id
 
-        stripe_subscription = self._api_update(plan=plan, prorate=prorate, **kwargs)
+        if "proration_behavior" not in kwargs:
+            if prorate is not None:
+                warnings.warn(
+                    "The `prorate` parameter to Subscription.update() is deprecated "
+                    "by Stripe. Use `proration_behavior` instead.\n"
+                    "Read more: "
+                    "https://stripe.com/docs/billing/subscriptions/prorations"
+                )
+            else:
+                prorate = djstripe_settings.PRORATION_POLICY
+
+            if prorate:
+                kwargs.setdefault("proration_behavior", "create_prorations")
+            else:
+                kwargs.setdefault("proration_behavior", "none")
+
+        stripe_subscription = self._api_update(plan=plan, **kwargs)
 
         return Subscription.sync_from_stripe_data(stripe_subscription)
 
@@ -1493,7 +1509,7 @@ class Subscription(StripeModel):
 
         period_end += delta
 
-        return self.update(prorate=False, trial_end=period_end)
+        return self.update(proration_behavior="none", trial_end=period_end)
 
     def cancel(self, at_period_end=djstripe_settings.CANCELLATION_AT_PERIOD_END):
         """
@@ -1812,6 +1828,21 @@ class TaxId(StripeModel):
             expand=self.expand_fields,
             stripe_account=stripe_account,
         )
+
+    @classmethod
+    def api_list(cls, api_key=djstripe_settings.STRIPE_SECRET_KEY, **kwargs):
+        # OVERRIDING the parent version of this function
+        # TaxIds must be manipulated through a customer..
+        from .core import Customer
+
+        if "customer" not in kwargs or not isinstance(kwargs["customer"], Customer):
+            raise StripeObjectManipulationException(
+                "TaxIds must be manipulated through a Customer. "
+                "Pass a Customer object into this call."
+            )
+
+        customer = kwargs["customer"]
+        return customer.api_retrieve(api_key=api_key).tax_ids
 
 
 class TaxRate(StripeModel):

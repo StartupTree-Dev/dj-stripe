@@ -569,7 +569,7 @@ class Customer(StripeModel):
     """
 
     stripe_class = stripe.Customer
-    expand_fields = ["default_source"]
+    expand_fields = ["default_source", "sources", "tax_ids"]
     stripe_dashboard_item_name = "customers"
 
     address = JSONField(null=True, blank=True, help_text="The customer's address.")
@@ -759,6 +759,36 @@ class Customer(StripeModel):
                 "delinquent": stripe_customer.get("delinquent", False),
             },
         )
+
+        return customer
+
+    @classmethod
+    def _get_or_create_from_stripe_object(
+        cls,
+        data,
+        field_name="id",
+        refetch=True,
+        current_ids=None,
+        pending_relations=None,
+        save=True,
+        stripe_account=None,
+    ):
+        from .billing import TaxId
+
+        customer = super()._get_or_create_from_stripe_object(
+            data,
+            field_name=field_name,
+            refetch=refetch,
+            current_ids=current_ids,
+            pending_relations=pending_relations,
+            save=save,
+            stripe_account=stripe_account,
+        )
+        if data.get("tax_ids"):
+
+            tax_id_data = data.get("tax_ids").get("data")
+            for tax_id_obj in tax_id_data:
+                TaxId.sync_from_stripe_data(tax_id_obj)
 
         return customer
 
@@ -1332,6 +1362,12 @@ class Customer(StripeModel):
     def _sync_charges(self, **kwargs):
         for stripe_charge in Charge.api_list(customer=self.id, **kwargs):
             Charge.sync_from_stripe_data(stripe_charge)
+
+    def _sync_tax_ids(self, **kwargs):
+        from .billing import TaxId
+
+        for stripe_tax_id in TaxId.api_list(customer=self, **kwargs):
+            TaxId.sync_from_stripe_data(stripe_tax_id)
 
     def _sync_cards(self, **kwargs):
         from .payment_methods import Card
