@@ -9,7 +9,7 @@ from django.utils.module_loading import import_string
 
 from .checks import validate_stripe_api_version
 
-DEFAULT_STRIPE_API_VERSION = "2020-08-27"
+DEFAULT_STRIPE_API_VERSION = "2024-06-20"
 
 
 def get_callback_function(setting_name, default=None):
@@ -209,8 +209,8 @@ def get_subscriber_model():
 
 def get_stripe_api_version():
     """Get the desired API version to use for Stripe requests."""
-    version = getattr(settings, "STRIPE_API_VERSION", stripe.api_version)
-    return version or DEFAULT_STRIPE_API_VERSION
+    # version = getattr(settings, "STRIPE_API_VERSION", stripe.api_version)
+    return DEFAULT_STRIPE_API_VERSION
 
 
 def set_stripe_api_version(version=None, validate=True):
